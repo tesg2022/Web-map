@@ -10,6 +10,8 @@
         <link rel="stylesheet" href="css/L.Control.Layers.Tree.css">
         <link rel="stylesheet" href="css/qgis2web.css">
         <link rel="stylesheet" href="css/fontawesome-all.min.css">
+        <link rel="stylesheet" href="css/filter.css">
+<link rel="stylesheet" href="css/nouislider.min.css">
         <link rel="stylesheet" href="css/leaflet-control-geocoder.Geocoder.css">
         <style>
         #map {
@@ -17,7 +19,7 @@
             height: 627px;
         }
         </style>
-        <title>Webmap - Climate Change Impacts on Groundwater in SA</title>
+        <title>Review of climate and groundwater</title>
     </head>
     <body>
         <div id="map">
@@ -33,6 +35,9 @@
         <script src="js/labelgun.min.js"></script>
         <script src="js/labels.js"></script>
         <script src="js/leaflet-control-geocoder.Geocoder.js"></script>
+        <script src="js/tailDT.js"></script>
+<script src="js/nouislider.min.js"></script>
+<script src="js/wNumb.js"></script>
         <script src="data/Provences_1.js"></script>
         <script src="data/ReviewclimateandgroundwaterinSouthAfrica_2.js"></script>
         <script>
@@ -104,7 +109,10 @@
                         <td>' + (feature.properties['NAME_1'] !== null ? autolinker.link(feature.properties['NAME_1'].toLocaleString()) : '') + '</td>\
                     </tr>\
                     <tr>\
-                        <td colspan="2">' + (feature.properties['VARNAME_1'] !== null ? autolinker.link(feature.properties['VARNAME_1'].toLocaleString()) : '') + '</td>\
+                        <td class="visible-with-data" id="ENGTYPE_1"colspan="2"><strong>ENGTYPE_1</strong><br />' + (feature.properties['ENGTYPE_1'] !== null ? autolinker.link(feature.properties['ENGTYPE_1'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2"><strong>HASC_1</strong><br />' + (feature.properties['HASC_1'] !== null ? autolinker.link(feature.properties['HASC_1'].toLocaleString()) : '') + '</td>\
                     </tr>\
                 </table>';
             layer.bindPopup(popupContent, {maxHeight: 400});
@@ -220,7 +228,7 @@
                 return this._div;
             };
             title.update = function () {
-                this._div.innerHTML = '<h2>Webmap - Climate Change Impacts on Groundwater in SA</h2>';
+                this._div.innerHTML = '<h2>Review of climate and groundwater</h2>';
             };
             title.addTo(map);
         var osmGeocoder = new L.Control.Geocoder({
@@ -260,6 +268,179 @@
               addLabel(layer, i);
               i++;
         });
+        var mapDiv = document.getElementById('map');
+        var row = document.createElement('div');
+        row.className="row";
+        row.id="all";
+        row.style.height = "100%";
+        var col1 = document.createElement('div');
+        col1.className="col9";
+        col1.id = "mapWindow";
+        col1.style.height = "99%";
+        col1.style.width = "80%";
+        col1.style.display = "inline-block";
+        var col2 = document.createElement('div');
+        col2.className="col3";
+        col2.id = "menu";
+        col2.style.display = "inline-block";
+        mapDiv.parentNode.insertBefore(row, mapDiv);
+        document.getElementById("all").appendChild(col1);
+        document.getElementById("all").appendChild(col2);
+        col1.appendChild(mapDiv)
+        var Filters = {"NAME_1": "str"};
+        function filterFunc() {
+          map.eachLayer(function(lyr){
+          if ("options" in lyr && "dataVar" in lyr["options"]){
+            features = this[lyr["options"]["dataVar"]].features.slice(0);
+            try{
+              for (key in Filters){
+                keyS = key.replace(/[^a-zA-Z0-9_]/g, "")
+                if (Filters[key] == "str" || Filters[key] == "bool"){
+                  var selection = [];
+                  var options = document.getElementById("sel_" + keyS).options
+                  for (var i=0; i < options.length; i++) {
+                    if (options[i].selected) selection.push(options[i].value);
+                  }
+                    try{
+                      if (key in features[0].properties){
+                        for (i = features.length - 1;
+                          i >= 0; --i){
+                          if (selection.indexOf(
+                          features[i].properties[key])<0
+                          && selection.length>0) {
+                          features.splice(i,1);
+                          }
+                        }
+                      }
+                    } catch(err){
+                  }
+                }
+                if (Filters[key] == "int"){
+                  sliderVals =  document.getElementById(
+                    "div_" + keyS).noUiSlider.get();
+                  try{
+                    if (key in features[0].properties){
+                    for (i = features.length - 1; i >= 0; --i){
+                      if (parseInt(features[i].properties[key])
+                          < sliderVals[0]
+                          || parseInt(features[i].properties[key])
+                          > sliderVals[1]){
+                            features.splice(i,1);
+                          }
+                        }
+                      }
+                    } catch(err){
+                    }
+                  }
+                if (Filters[key] == "real"){
+                  sliderVals =  document.getElementById(
+                    "div_" + keyS).noUiSlider.get();
+                  try{
+                    if (key in features[0].properties){
+                    for (i = features.length - 1; i >= 0; --i){
+                      if (features[i].properties[key]
+                          < sliderVals[0]
+                          || features[i].properties[key]
+                          > sliderVals[1]){
+                            features.splice(i,1);
+                          }
+                        }
+                      }
+                    } catch(err){
+                    }
+                  }
+                if (Filters[key] == "date"
+                  || Filters[key] == "datetime"
+                  || Filters[key] == "time"){
+                  try{
+                    if (key in features[0].properties){
+                      HTMLkey = key.replace(/[&\/\\#,+()$~%.'":*?<>{} ]/g, '');
+                      startdate = document.getElementById("dat_" +
+                        HTMLkey + "_date1").value.replace(" ", "T");
+                      enddate = document.getElementById("dat_" +
+                        HTMLkey + "_date2").value.replace(" ", "T");
+                      for (i = features.length - 1; i >= 0; --i){
+                        if (features[i].properties[key] < startdate
+                          || features[i].properties[key] > enddate){
+                          features.splice(i,1);
+                        }
+                      }
+                    }
+                  } catch(err){
+                  }
+                }
+              }
+            } catch(err){
+            }
+          this[lyr["options"]["layerName"]].clearLayers();
+          this[lyr["options"]["layerName"]].addData(features);
+        var i = 0;
+        layer_Provences_1.eachLayer(function(layer) {
+            var context = {
+                feature: layer.feature,
+                variables: {}
+            };
+            layer.bindTooltip((layer.feature.properties['NAME_1'] !== null?String('<div style="color: #323232; font-size: 10pt; font-family: \'Open Sans\', sans-serif;">' + layer.feature.properties['NAME_1']) + '</div>':''), {permanent: true, offset: [-0, -16], className: 'css_Provences_1'});
+            labels.push(layer);
+            totalMarkers += 1;
+              layer.added = true;
+              addLabel(layer, i);
+              i++;
+        });
+        var i = 0;
+        layer_ReviewclimateandgroundwaterinSouthAfrica_2.eachLayer(function(layer) {
+            var context = {
+                feature: layer.feature,
+                variables: {}
+            };
+            layer.bindTooltip((layer.feature.properties['Study by W'] !== null?String('<div style="color: #323232; font-size: 10pt; font-family: \'Open Sans\', sans-serif;">' + layer.feature.properties['Study by W']) + '</div>':''), {permanent: true, offset: [-0, -16], className: 'css_ReviewclimateandgroundwaterinSouthAfrica_2'});
+            labels.push(layer);
+            totalMarkers += 1;
+              layer.added = true;
+              addLabel(layer, i);
+              i++;
+        });
+          }
+          })
+        }
+            document.getElementById("menu").appendChild(
+                document.createElement("div"));
+            var div_NAME_1 = document.createElement('div');
+            div_NAME_1.id = "div_NAME_1";
+            div_NAME_1.className= "filterselect";
+            document.getElementById("menu").appendChild(div_NAME_1);
+            sel_NAME_1 = document.createElement('select');
+            sel_NAME_1.multiple = true;
+            sel_NAME_1.size = 9;
+            sel_NAME_1.id = "sel_NAME_1";
+            var NAME_1_options_str = "<option value='' unselected></option>";
+            sel_NAME_1.onchange = function(){filterFunc()};
+            NAME_1_options_str  += '<option value="Eastern Cape">Eastern Cape</option>';
+            NAME_1_options_str  += '<option value="Free State">Free State</option>';
+            NAME_1_options_str  += '<option value="Gauteng">Gauteng</option>';
+            NAME_1_options_str  += '<option value="KwaZulu-Natal">KwaZulu-Natal</option>';
+            NAME_1_options_str  += '<option value="Limpopo">Limpopo</option>';
+            NAME_1_options_str  += '<option value="Mpumalanga">Mpumalanga</option>';
+            NAME_1_options_str  += '<option value="North West">North West</option>';
+            NAME_1_options_str  += '<option value="Northern Cape">Northern Cape</option>';
+            NAME_1_options_str  += '<option value="Western Cape">Western Cape</option>';
+            sel_NAME_1.innerHTML = NAME_1_options_str;
+            div_NAME_1.appendChild(sel_NAME_1);
+            var lab_NAME_1 = document.createElement('div');
+            lab_NAME_1.innerHTML = 'NAME_1';
+            lab_NAME_1.className = 'filterlabel';
+            div_NAME_1.appendChild(lab_NAME_1);
+            var reset_NAME_1 = document.createElement('div');
+            reset_NAME_1.innerHTML = 'clear filter';
+            reset_NAME_1.className = 'filterlabel';
+            reset_NAME_1.onclick = function() {
+                var options = document.getElementById("sel_NAME_1").options;
+                for (var i=0; i < options.length; i++) {
+                    options[i].selected = false;
+                }
+                filterFunc();
+            };
+            div_NAME_1.appendChild(reset_NAME_1);
         resetLabels([layer_Provences_1,layer_ReviewclimateandgroundwaterinSouthAfrica_2]);
         map.on("zoomend", function(){
             resetLabels([layer_Provences_1,layer_ReviewclimateandgroundwaterinSouthAfrica_2]);
